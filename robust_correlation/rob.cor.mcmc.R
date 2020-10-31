@@ -66,18 +66,27 @@ rob.cor.mcmc = function(x, iter = 2000, warmup = 500, chains = 4) {
                     model_code=stan.model, data=model.data,
                     seed=911, iter=iter, warmup=warmup, chains=chains)
     
+#    # Plot inferred bivariate t-distribution fit # update hp
+#    x.rand = extract(stan.cor, c("x_rand"))[[1]]
+#    out <- dataEllipse(x,levels=c(0.5,0.95), draw=F)
+#    # Calculate min and max of x and y coordinates
+#	rng <- do.call(rbind, lapply(out, function(mtx) apply(mtx,2,range)))
+#	mnmx <- apply(rng, 2, range)
+#	plot(x, xlim=mnmx[,1], ylim=mnmx[,2], pch=16)
+#	dataEllipse(x.rand, levels = c(0.5, 0.95),fill=T, plot.points = FALSE)
+    
     # Obtain the MCMC samples of rho
     stan.rho = extract(stan.cor, "rho")[[1]]
     hpd95 = HPDinterval(as.mcmc(as.numeric(stan.rho)), prob=0.95)
     hpd99 = HPDinterval(as.mcmc(as.numeric(stan.rho)), prob=0.99)
     
-    # Plot trace and posterior
-    p1 = stan_trace(stan.cor, pars="rho")
-    p2 = stan_dens(stan.cor, pars="rho") +
-        geom_line(data=data.frame(t(hpd95)), 
-                  aes(x=var1, y=c(0,0), col="95% HPD"), size=2) +
-        scale_colour_manual(name="", values=c(`95% HPD`="steelblue3"))
-    grid.arrange(p1, p2)
+#    # Plot trace and posterior
+#    p1 = stan_trace(stan.cor, pars="rho")
+#    p2 = stan_dens(stan.cor, pars="rho") +
+#        geom_line(data=data.frame(t(hpd95)), 
+#                  aes(x=var1, y=c(0,0), col="95% HPD"), size=2) +
+#        scale_colour_manual(name="", values=c(`95% HPD`="steelblue3"))
+#    grid.arrange(p1, p2)
 
     # Write some descriptive statistics
     cat("POSTERIOR STATISTICS OF RHO\n",
@@ -98,6 +107,17 @@ rob.cor.mcmc = function(x, iter = 2000, warmup = 500, chains = 4) {
         sep="")
     
     # Return stanfit object
-    return(stan.cor)
+    # Upd. HP: and discriptive statistics
+    return(list(#"stanfit_object"=stan.cor,
+    			"post_mean"=mean(stan.rho),
+    			"post_sd"=sd(stan.rho),
+    			"post_median"=median(stan.rho),
+    			"post_mad"=mad(stan.rho),
+    			"hdpi99" = list("lower"=hpd99[,"lower"],"upper"=hpd99[,"upper"]),
+    			"hdpi95" = list("lower"=hpd95[,"lower"],"upper"=hpd95[,"upper"]),
+    			"P_rho_leq_0" = mean(stan.rho <= 0),
+    			"P_rho_geq_0" = mean(stan.rho >= 0),
+    			"P_rho_weak" =  mean(stan.rho > -0.1 & stan.rho < 0.1)
+    ))
     
 }
